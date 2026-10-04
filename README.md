@@ -174,8 +174,7 @@ marketing-mix-model/
 │   └── methodology.md
 │
 └── README.md
-...
-
+```
 ## Data Confidentiality
 
 The original dataset is not included in this repository because it contains proprietary commercial, sales and media-planning information.
