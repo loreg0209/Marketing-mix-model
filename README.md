@@ -174,3 +174,20 @@ marketing-mix-model/
 │   └── methodology.md
 │
 └── README.md
+
+## Data Confidentiality
+
+The original dataset is not included in this repository because it contains proprietary commercial, sales and media-planning information.
+
+All company, product, brand and campaign references used in the original analysis have been anonymized.
+
+This repository focuses on the statistical methodology, modeling workflow and analytical results.
+
+---
+
+## Author
+
+Lorenzo Gulizia
+
+Bachelor's Degree in Statistics and Information Management  
+University of Milano-Bicocca
