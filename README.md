@@ -1,5 +1,3 @@
-# Marketing-mix-model
-Custom Marketing Mix Model in R using nonlinear regression, adstock and saturation effects, with bootstrap validation and ROI analysis.
 # Marketing Mix Modeling with Nonlinear Regression
 
 This project was developed as my Bachelor's thesis in Statistics and Information Management at the University of Milano-Bicocca.
