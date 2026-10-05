@@ -154,15 +154,17 @@ This model was used as a simpler benchmark and helped highlight the limitations 
 ## Repository Structure
 
 ```text
-R/
-├── 01_data_preparation.R
-├── 02_exploratory_analysis.R
-├── 03_nonlinear_mmm.R
-└── 04_validation_and_insights.R
-
-benchmark/
-└── linear_mmm.Rmd
+Marketing-mix-model/
+├── R/
+│   ├── 01_data_preparation.R
+│   ├── 02_exploratory_analysis.R
+│   ├── 03_nonlinear_mmm.R
+│   └── 04_validation_and_insights.R
 │
+├── benchmark/
+│   └── linear_mmm.Rmd
+│
+├── .gitignore
 └── README.md
 ```
 ## Data Confidentiality
