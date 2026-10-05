@@ -154,24 +154,14 @@ This model was used as a simpler benchmark and helped highlight the limitations 
 ## Repository Structure
 
 ```text
-marketing-mix-model/
-│
-├── R/
-│   ├── 01_data_preparation.R
-│   ├── 02_exploratory_analysis.R
-│   ├── 03_media_transformations.R
-│   ├── 04_parameter_estimation.R
-│   ├── 05_final_model.R
-│   ├── 06_model_validation.R
-│   └── 07_contribution_roi.R
-│
-├── benchmark/
-│   └── linear_mmm.Rmd
-│
-├── figures/
-│
-├── docs/
-│   └── methodology.md
+R/
+├── 01_data_preparation.R
+├── 02_exploratory_analysis.R
+├── 03_nonlinear_mmm.R
+└── 04_validation_and_insights.R
+
+benchmark/
+└── linear_mmm.Rmd
 │
 └── README.md
 ```
