@@ -61,7 +61,7 @@ Media channels were modeled using nonlinear transformations designed to capture:
 - **Carryover effect**: advertising continues to influence consumers after the initial exposure.
 - **Saturation effect**: incremental advertising effectiveness decreases as media pressure increases.
 
-Adstock transformations were applied over multiple temporal lags, while nonlinear saturation functions were used to represent diminishing returns.
+Adstock transformations were applied over six weekly lags, while C-shaped saturation functions were used to represent diminishing returns.
 
 ---
 
