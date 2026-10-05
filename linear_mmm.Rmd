@@ -1,0 +1,297 @@
+---
+title: "Linear Marketing Mix Model Benchmark"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook contains the linear-regression benchmark developed before the
+final nonlinear Marketing Mix Model.
+
+The original proprietary dataset is not included. Company, brand and campaign
+names have been anonymized.
+
+## Packages and data
+
+```{r packages}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(prophet)
+library(MASS)
+library(car)
+library(lmtest)
+library(sandwich)
+library(caret)
+```
+
+```{r data}
+data_path <- "data/private/marketing_data.xlsx"
+
+if (!file.exists(data_path)) {
+  stop("Private dataset not found. The proprietary dataset used in the thesis is not distributed with this repository.")
+}
+
+df <- read_excel(data_path, sheet = "model_data")
+```
+
+## Seasonality
+
+```{r seasonality}
+prophet_data <- df %>%
+  select(Week_Ending, Vol_Sales) %>%
+  rename(ds = Week_Ending, y = Vol_Sales)
+
+m <- prophet(
+  prophet_data,
+  yearly.seasonality = TRUE,
+  weekly.seasonality = TRUE,
+  daily.seasonality = FALSE,
+  seasonality.mode = "multiplicative",
+  growth = "linear"
+)
+
+forecast <- predict(m, prophet_data)
+seasonal_component <- forecast$yearly + forecast$weekly
+
+df$seasonal_index_prophet <- exp(seasonal_component) / mean(exp(seasonal_component))
+```
+
+## Pre-processing
+
+```{r preprocessing}
+df$search <- df$CLICK_Search_Channel_A + df$CLICK_Search_Channel_B
+
+correlation_vars <- c(
+  "Vol_Sales", "GRP_TV_target", "GRP_TV_related_1", "GRP_TV_related_2",
+  "imp_display", "competition", "search", "imp_video_social",
+  "imp_meta_youtube", "seasonal_index_prophet"
+)
+
+cor_matrix <- cor(df[, correlation_vars], use = "complete.obs")
+print(cor_matrix)
+
+Q1 <- quantile(df$Vol_Sales, 0.25)
+Q3 <- quantile(df$Vol_Sales, 0.75)
+IQR_sales <- Q3 - Q1
+
+lower_bound <- Q1 - 1.5 * IQR_sales
+upper_bound <- Q3 + 1.5 * IQR_sales
+
+outliers <- df$Vol_Sales[df$Vol_Sales < lower_bound | df$Vol_Sales > upper_bound]
+print(paste("Number of outliers:", length(outliers)))
+```
+
+## Adstock preparation
+
+```{r adstock}
+adstock <- function(x, decay_rate) {
+  result <- numeric(length(x))
+  result[1] <- x[1]
+
+  for (i in 2:length(x)) {
+    result[i] <- x[i] + decay_rate * result[i - 1]
+  }
+
+  return(result)
+}
+
+tv_decay <- 0.8
+digital_decay <- 0.5
+
+df$GRP_TV_target_adstock <- adstock(df$GRP_TV_target, tv_decay)
+df$GRP_TV_related_1_adstock <- adstock(df$GRP_TV_related_1, tv_decay)
+df$GRP_TV_related_2_adstock <- adstock(df$GRP_TV_related_2, tv_decay)
+
+df$imp_display_adstock <- adstock(df$imp_display, digital_decay)
+df$imp_video_social_adstock <- adstock(df$imp_video_social, digital_decay)
+df$imp_meta_youtube_adstock <- adstock(df$imp_meta_youtube, digital_decay)
+df$search_adstock <- adstock(df$search, digital_decay)
+```
+
+## Initial linear model
+
+```{r model-1}
+model1 <- lm(
+  Vol_Sales ~
+    Base_price +
+    NEW_DATA_NMR +
+    Promo_Intensity +
+    seasonal_index_prophet +
+    GRP_TV_target_adstock +
+    GRP_TV_related_1_adstock +
+    GRP_TV_related_2_adstock +
+    competition +
+    imp_video_social_adstock +
+    imp_meta_youtube_adstock +
+    imp_display_adstock +
+    search_adstock,
+  data = df
+)
+
+summary(model1)
+vif(model1)
+plot(model1)
+
+resettest(model1, power = 2, type = "fitted", data = df)
+ncvTest(model1)
+bptest(model1)
+```
+
+## Log-transformed model with selected interactions
+
+```{r model-2}
+model2 <- lm(
+  log(Vol_Sales) ~
+    Base_price +
+    NEW_DATA_NMR +
+    GRP_TV_target_adstock +
+    GRP_TV_related_1_adstock +
+    GRP_TV_related_2_adstock +
+    seasonal_index_prophet * competition +
+    imp_video_social_adstock +
+    imp_meta_youtube_adstock +
+    Promo_Intensity * imp_display_adstock +
+    search_adstock,
+  data = df
+)
+
+summary(model2)
+vif(model2)
+plot(model2)
+
+resettest(model2, power = 2, type = "fitted", data = df)
+ncvTest(model2)
+bptest(model2)
+
+robust_se <- coeftest(model2, vcov = vcovHC(model2, type = "HC3"))
+print(robust_se)
+```
+
+## Standardized media benchmark
+
+```{r standardized-media}
+standardize_no_zeros <- function(x) {
+  non_zero <- x[x != 0]
+
+  if (length(non_zero) > 0) {
+    return((x - mean(non_zero)) / sd(non_zero))
+  } else {
+    return(x)
+  }
+}
+
+media_vars <- c(
+  "GRP_TV_target_adstock",
+  "GRP_TV_related_1_adstock",
+  "GRP_TV_related_2_adstock",
+  "imp_display_adstock",
+  "imp_video_social_adstock",
+  "imp_meta_youtube_adstock",
+  "search_adstock",
+  "competition"
+)
+
+for (var in media_vars) {
+  new_var_name <- paste0(var, "_std")
+  df[[new_var_name]] <- standardize_no_zeros(df[[var]])
+}
+```
+
+```{r final-linear-benchmark}
+model_std2 <- lm(
+  log(Vol_Sales) ~
+    NEW_DATA_NMR +
+    I(Base_price^2) +
+    GRP_TV_target_adstock_std +
+    GRP_TV_related_1_adstock_std +
+    GRP_TV_related_2_adstock_std +
+    Promo_Intensity * imp_display_adstock_std +
+    imp_video_social_adstock_std +
+    imp_meta_youtube_adstock_std +
+    search_adstock_std +
+    competition_std * seasonal_index_prophet,
+  data = df
+)
+
+summary(model_std2)
+plot(model_std2)
+
+resettest(model_std2, power = 2, type = "fitted", data = df)
+ncvTest(model_std2)
+bptest(model_std2)
+
+robust_se <- coeftest(model_std2, vcov = vcovHC(model_std2, type = "HC3"))
+print(robust_se)
+```
+
+## Time-series cross-validation
+
+```{r validation}
+build_model <- function(data) {
+  lm(
+    log(Vol_Sales) ~
+      log(NEW_DATA_NMR) +
+      Base_price +
+      GRP_TV_target_adstock_std +
+      GRP_TV_related_1_adstock_std +
+      GRP_TV_related_2_adstock_std +
+      Promo_Intensity * imp_display_adstock_std +
+      imp_video_social_adstock_std +
+      imp_meta_youtube_adstock_std +
+      search_adstock_std +
+      seasonal_index_prophet * competition_std,
+    data = data
+  )
+}
+
+df$date <- as.Date(df$Week_Ending)
+df <- df[order(df$date), ]
+
+initial_window <- 52
+horizon <- 13
+
+indices <- createTimeSlices(
+  1:nrow(df),
+  initialWindow = initial_window,
+  horizon = horizon,
+  fixedWindow = TRUE
+)
+
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted)^2))
+}
+
+cv_results <- list()
+
+for (i in 1:length(indices$train)) {
+  train_data <- df[indices$train[[i]], ]
+  test_data <- df[indices$test[[i]], ]
+
+  model <- build_model(train_data)
+  predictions <- exp(predict(model, newdata = test_data))
+  actual <- test_data$Vol_Sales
+
+  cv_results[[i]] <- list(
+    rmse = rmse(actual, predictions),
+    mape = mean(abs((actual - predictions) / actual)) * 100
+  )
+}
+
+mean_rmse <- mean(sapply(cv_results, function(x) x$rmse))
+mean_mape <- mean(sapply(cv_results, function(x) x$mape))
+sd_rmse <- sd(sapply(cv_results, function(x) x$rmse))
+sd_mape <- sd(sapply(cv_results, function(x) x$mape))
+
+cat("Mean RMSE:", mean_rmse, "\n")
+cat("Mean MAPE:", mean_mape, "%\n")
+cat("SD RMSE:", sd_rmse, "\n")
+cat("SD MAPE:", sd_mape, "%\n")
+cat("Number of folds:", length(cv_results), "\n")
+```
+
+The linear model was retained as a benchmark. The final thesis model used the
+nonlinear `nlsLM` specification because the nonlinear approach provided a more
+flexible representation of media saturation and carryover effects.
