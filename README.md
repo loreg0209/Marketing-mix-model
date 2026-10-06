@@ -164,6 +164,9 @@ Marketing-mix-model/
 ├── benchmark/
 │   └── linear_mmm.Rmd
 │
+├── docs/
+│   └── marketing_mix_model_thesis_public.pdf
+│
 ├── .gitignore
 └── README.md
 ```
@@ -174,6 +177,14 @@ The original dataset is not included in this repository because it contains prop
 All company, product, brand and campaign references used in the original analysis have been anonymized.
 
 This repository focuses on the statistical methodology, modeling workflow and analytical results.
+
+---
+
+## Thesis
+
+The complete anonymized Bachelor's thesis associated with this project is available here:
+
+[Read the full thesis](docs/marketing_mix_model_thesis_public.pdf)
 
 ---
 
